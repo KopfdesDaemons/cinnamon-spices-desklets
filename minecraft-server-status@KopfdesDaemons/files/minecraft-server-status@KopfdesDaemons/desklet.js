@@ -47,6 +47,7 @@ class MyDesklet extends Desklet.Desklet {
     this.hideDecoration = true;
     this.refreshInterval = 1;
     this.showHeader = true;
+    this.fontColor = "inherit";
 
     // Bind settings
     this.settings = new Settings.DeskletSettings(this, metadata["uuid"], deskletId);
@@ -57,6 +58,7 @@ class MyDesklet extends Desklet.Desklet {
     this.settings.bindProperty(Settings.BindingDirection.IN, "hide-decorations", "hideDecorations", this._onDecorationsChanged);
     this.settings.bindProperty(Settings.BindingDirection.IN, "refresh-interval", "refreshInterval", this._setRefreshInterval);
     this.settings.bindProperty(Settings.BindingDirection.IN, "show-header", "showHeader", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "font-color", "fontColor", this._setupLayout);
   }
 
   on_desklet_added_to_desktop() {
@@ -119,7 +121,7 @@ class MyDesklet extends Desklet.Desklet {
 
     // Header
     if (this.showHeader) {
-      const header = this.uiHelper.getHeader({ scaleSize: this.scaleSize, reloadCallback: () => this._setupLayout() });
+      const header = this.uiHelper.getHeader({ scaleSize: this.scaleSize, fontColor: this.fontColor, reloadCallback: () => this._setupLayout() });
       container.add_child(header);
     }
 
@@ -127,7 +129,7 @@ class MyDesklet extends Desklet.Desklet {
 
     // Setup view
     if (this.serverAddresses.length === 0) {
-      const setupView = this.uiHelper.getSetupView({ scaleSize: this.scaleSize });
+      const setupView = this.uiHelper.getSetupView({ scaleSize: this.scaleSize, fontColor: this.fontColor });
       container.add_child(setupView);
       return;
     }
@@ -142,7 +144,7 @@ class MyDesklet extends Desklet.Desklet {
       const itemBin = new St.Bin({ x_expand: true, x_fill: true });
       serverListContainer.add_child(itemBin);
 
-      const loadingView = this.uiHelper.getServerListItemLoadingView({ name: address.name, scaleSize: this.scaleSize });
+      const loadingView = this.uiHelper.getServerListItemLoadingView({ name: address.name, scaleSize: this.scaleSize, fontColor: this.fontColor });
       itemBin.set_child(loadingView);
 
       try {
@@ -157,13 +159,14 @@ class MyDesklet extends Desklet.Desklet {
           name: address.name,
           status: status,
           scaleSize: this.scaleSize,
+          fontColor: this.fontColor,
         };
 
         const serverItem = this.uiHelper.getServerListItem(options);
         itemBin.set_child(serverItem);
       } catch (e) {
         global.logError(`[${UUID}] Error getting status for ${address.address}: ${e}`);
-        const errorView = this.uiHelper.getServerListItemErrorView({ name: address.name, scaleSize: this.scaleSize });
+        const errorView = this.uiHelper.getServerListItemErrorView({ name: address.name, scaleSize: this.scaleSize, fontColor: this.fontColor });
         itemBin.set_child(errorView);
       }
     });
@@ -174,7 +177,7 @@ class MyDesklet extends Desklet.Desklet {
   _onContainerStyleChanged() {
     if (this._mainContainer) {
       this._mainContainer.set_style(
-        `width: ${this.scaleSize * 20}em; background-color: ${this.backgroundColor}; padding: ${this.scaleSize * 1}em; border-radius: ${this.scaleSize * 0.3}em;`,
+        `color: ${this.fontColor}; width: ${this.scaleSize * 20}em; background-color: ${this.backgroundColor}; padding: ${this.scaleSize * 1}em; border-radius: ${this.scaleSize * 0.3}em;`,
       );
     }
   }

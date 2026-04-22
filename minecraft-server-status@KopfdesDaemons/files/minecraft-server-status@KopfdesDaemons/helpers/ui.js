@@ -14,12 +14,12 @@ function _(str) {
 
 var UiHelper = class {
   getHeader(options) {
-    const { scaleSize, reloadCallback } = options;
+    const { scaleSize, fontColor, reloadCallback } = options;
     const header = new St.BoxLayout();
     const reloadButtonStyle = `width: ${1.6 * scaleSize}em; height: ${1.6 * scaleSize}em; padding: ${0.2 * scaleSize}em;`;
 
     const headline = new St.Label({ text: _("Minecraft Server Status") });
-    headline.set_style(`font-size: ${scaleSize * 1.2}em;`);
+    headline.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1.2}em;`);
     header.add(headline, { y_fill: false });
 
     // Reload button
@@ -43,19 +43,19 @@ var UiHelper = class {
   }
 
   getSetupView(options) {
-    const { scaleSize } = options;
+    const { scaleSize, fontColor } = options;
     const setupUI = new St.BoxLayout();
 
     const setupText = "Add server in the desklet settings.";
     const setupLabel = new St.Label({ text: _(setupText) });
-    setupLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    setupLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     setupUI.add(setupLabel);
 
     return setupUI;
   }
 
   getServerListItem(options) {
-    const { name, status, scaleSize } = options;
+    const { name, status, scaleSize, fontColor } = options;
 
     const item = new St.BoxLayout();
     item.set_style(`height: ${scaleSize * 3}em;`);
@@ -74,7 +74,7 @@ var UiHelper = class {
 
     // Name
     const nameLabel = new St.Label({ text: name });
-    nameLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    nameLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     item.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Free Space
@@ -84,7 +84,7 @@ var UiHelper = class {
     // Player
     const playerCount = status.players.toString() + "/" + status.maxPlayers.toString();
     const playerLabel = new St.Label({ text: playerCount });
-    playerLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    playerLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     item.add(playerLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Signal
@@ -130,7 +130,7 @@ var UiHelper = class {
   }
 
   getServerListItemLoadingView(options) {
-    const { name, scaleSize } = options;
+    const { name, scaleSize, fontColor } = options;
     const loadingView = new St.BoxLayout();
     loadingView.set_style(`height: ${scaleSize * 3}em;`);
 
@@ -143,21 +143,21 @@ var UiHelper = class {
     loadingView.add(loadingIcon, { y_fill: false, y_align: St.Align.MIDDLE });
 
     const nameLabel = new St.Label({ text: name });
-    nameLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    nameLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     loadingView.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     const spacer = new St.Bin({ x_expand: true });
     loadingView.add(spacer);
 
     const loadingLabel = new St.Label({ text: _("Loading...") });
-    loadingLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    loadingLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     loadingView.add(loadingLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     return loadingView;
   }
 
   getServerListItemErrorView(options) {
-    const { name, scaleSize } = options;
+    const { name, scaleSize, fontColor } = options;
     const errorView = new St.BoxLayout();
 
     // Error icon
@@ -171,7 +171,7 @@ var UiHelper = class {
 
     // Name
     const nameLabel = new St.Label({ text: name });
-    nameLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    nameLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     errorView.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Spacer
