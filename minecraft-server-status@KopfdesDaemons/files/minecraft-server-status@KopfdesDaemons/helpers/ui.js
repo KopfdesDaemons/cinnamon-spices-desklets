@@ -15,14 +15,20 @@ function _(str) {
 var UiHelper = class {
   getHeader(options) {
     const { scaleSize, fontColor, reloadCallback } = options;
-    const header = new St.BoxLayout();
-    const reloadButtonStyle = `width: ${1.6 * scaleSize}em; height: ${1.6 * scaleSize}em; padding: ${0.2 * scaleSize}em;`;
 
+    const header = new St.BoxLayout();
+
+    // Headline
     const headline = new St.Label({ text: _("Minecraft Server Status") });
     headline.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1.2}em;`);
     header.add(headline, { y_fill: false });
 
+    // Spacer
+    const spacer = new St.Bin({ x_expand: true });
+    header.add(spacer);
+
     // Reload button
+    const reloadButtonStyle = `width: ${1.6 * scaleSize}em; height: ${1.6 * scaleSize}em; padding: ${0.2 * scaleSize}em;`;
     const reloadButton = new St.Button({
       style_class: "minecraft-server-status-reload-button",
       style: reloadButtonStyle,
@@ -35,8 +41,6 @@ var UiHelper = class {
     });
     new Tooltips.Tooltip(reloadButton, _("Reload"));
     reloadButton.set_child(reloadIcon);
-    const spacer = new St.Bin({ x_expand: true });
-    header.add(spacer);
     header.add_child(reloadButton);
 
     return header;
@@ -44,9 +48,11 @@ var UiHelper = class {
 
   getSetupView(options) {
     const { scaleSize, fontColor } = options;
+
     const setupUI = new St.BoxLayout();
 
-    const setupText = "Add server in the desklet settings.";
+    // Setup label
+    const setupText = _("Add server in the desklet settings.");
     const setupLabel = new St.Label({ text: _(setupText) });
     setupLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     setupUI.add(setupLabel);
@@ -131,24 +137,28 @@ var UiHelper = class {
 
   getServerListItemLoadingView(options) {
     const { name, scaleSize, fontColor } = options;
+
     const loadingView = new St.BoxLayout();
     loadingView.set_style(`height: ${scaleSize * 3}em;`);
 
+    // Loading icon
     const loadingIcon = new St.Icon({
       icon_name: "content-loading-symbolic",
       icon_type: St.IconType.SYMBOLIC,
       style: `width: ${scaleSize * 1.5}em; height: ${scaleSize * 1.5}em; margin-right: ${scaleSize * 0.5}em;`,
     });
-
     loadingView.add(loadingIcon, { y_fill: false, y_align: St.Align.MIDDLE });
 
+    // Name
     const nameLabel = new St.Label({ text: name });
     nameLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     loadingView.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
+    // Spacer
     const spacer = new St.Bin({ x_expand: true });
     loadingView.add(spacer);
 
+    // Loading label
     const loadingLabel = new St.Label({ text: _("Loading...") });
     loadingLabel.set_style(`color: ${fontColor}; font-size: ${scaleSize * 1}em;`);
     loadingView.add(loadingLabel, { y_fill: false, y_align: St.Align.MIDDLE });
@@ -158,6 +168,7 @@ var UiHelper = class {
 
   getServerListItemErrorView(options) {
     const { name, scaleSize, fontColor } = options;
+
     const errorView = new St.BoxLayout();
 
     // Error icon
