@@ -32,7 +32,7 @@ class MyDesklet extends Desklet.Desklet {
     this._isReloading = false;
 
     // Helpers
-    this.minecraftServerStatusHelper = new MinecraftServerStatusHelper();
+    this.minecraftServerStatusHelper = new MinecraftServerStatusHelper(deskletId);
     this.uiHelper = new UiHelper();
 
     // Default settings
@@ -49,6 +49,7 @@ class MyDesklet extends Desklet.Desklet {
   }
 
   on_desklet_removed() {
+    this.minecraftServerStatusHelper._removeCache();
     if (this.settings && !this._isReloading) {
       this.settings.finalize();
     }

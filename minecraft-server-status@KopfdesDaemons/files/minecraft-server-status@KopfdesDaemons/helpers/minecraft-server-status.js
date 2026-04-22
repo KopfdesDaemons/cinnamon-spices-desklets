@@ -2,7 +2,15 @@ const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const ByteArray = imports.byteArray;
 
+const UUID = "devtest-minecraft-server-status@KopfdesDaemons";
+
 var MinecraftServerStatusHelper = class {
+  cacheDir;
+
+  constructor(deskletId) {
+    this.cacheDir = GLib.get_user_cache_dir() + "/" + UUID + "/" + deskletId;
+  }
+
   /**
    * Main entry point to fetch the status of a Minecraft server.
    * Connects directly to the server and performs a Server List Ping (SLP).
@@ -18,7 +26,30 @@ var MinecraftServerStatusHelper = class {
       port = parseInt(parts[1], 10);
     }
 
-    return await this._pingMinecraft(host, port);
+    const result = await this._pingMinecraft(host, port);
+
+    GLib.mkdir_with_parents(this.cacheDir, 0o755);
+
+    if (result && result.favicon) {
+      const b64Match = result.favicon.match(/^data:image\/png;base64,(.*)$/);
+      if (b64Match) {
+        try {
+          const b64Data = b64Match[1];
+          const decoded = GLib.base64_decode(b64Data);
+          const safeHost = host.replace(/[^a-z0-9]/gi, "_");
+          const filePath = this.cacheDir + "/favicon_" + safeHost + "_" + port + ".png";
+          const file = Gio.File.new_for_path(filePath);
+          const stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
+          stream.write_bytes(GLib.Bytes.new(decoded), null);
+          stream.close(null);
+          result.faviconPath = filePath;
+        } catch (e) {
+          global.logError(`[${UUID}] Error saving favicon: ${e}`);
+        }
+      }
+    }
+
+    return result;
   }
 
   // Helper to promisify the Gio socket connection
@@ -291,10 +322,43 @@ var MinecraftServerStatusHelper = class {
       maxPlayers = data.players.max || 0;
     }
 
+    let favicon = "";
+    if (data && data.favicon) {
+      favicon = data.favicon;
+    }
+
     return {
       online: true,
       players: players,
       maxPlayers: maxPlayers,
+      favicon: favicon,
     };
+  }
+
+  _removeCache() {
+    try {
+      const cacheDirFile = Gio.File.new_for_path(this.cacheDir);
+      cacheDirFile.enumerate_children_async("standard::name", Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null, (file, res) => {
+        try {
+          const enumerator = file.enumerate_children_finish(res);
+          let info;
+          while ((info = enumerator.next_file(null)) !== null) {
+            try {
+              file.get_child(info.get_name()).delete(null);
+            } catch (e) {}
+          }
+          enumerator.close(null);
+          try {
+            file.delete(null);
+          } catch (e) {}
+        } catch (e) {
+          if (e.code !== Gio.IOErrorEnum.NOT_FOUND) {
+            global.logError(`[${UUID}] Error removing cache: ${e}`);
+          }
+        }
+      });
+    } catch (e) {
+      global.logError(`[${UUID}] Error initiating cache removal: ${e}`);
+    }
   }
 };

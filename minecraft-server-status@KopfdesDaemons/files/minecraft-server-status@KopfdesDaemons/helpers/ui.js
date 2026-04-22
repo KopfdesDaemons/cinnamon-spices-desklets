@@ -2,6 +2,7 @@ const St = imports.gi.St;
 const Tooltips = imports.ui.tooltips;
 const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
+const Gio = imports.gi.Gio;
 
 const UUID = "devtest-minecraft-server-status@KopfdesDaemons";
 
@@ -46,9 +47,21 @@ var UiHelper = class {
     const item = new St.BoxLayout();
     item.set_style(`height: ${scaleSize * 3}em;`);
 
+    // Favicon
+    if (status.faviconPath) {
+      const gicon = Gio.FileIcon.new(Gio.File.new_for_path(status.faviconPath));
+      const icon = new St.Icon({
+        gicon: gicon,
+        icon_size: Math.round(scaleSize * 24),
+        style: `width: ${scaleSize * 1.5}em; height: ${scaleSize * 1.5}em; margin-right: ${scaleSize * 0.5}em;`,
+      });
+      const iconBox = new St.Bin({ child: icon });
+      item.add(iconBox, { y_fill: false, y_align: St.Align.MIDDLE });
+    }
+
     // Name
     const nameLabel = new St.Label({ text: name });
-    item.add(nameLabel, { y_fill: false });
+    item.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Free Space
     const spacer = new St.Bin({ x_expand: true });
@@ -57,11 +70,11 @@ var UiHelper = class {
     // Player
     const playerCount = status.players.toString() + "/" + status.maxPlayers.toString();
     const playerLabel = new St.Label({ text: playerCount });
-    item.add(playerLabel, { y_fill: false });
+    item.add(playerLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Signal
     const signalIndicator = this._getSignalIndicator(scaleSize, status.ping);
-    item.add(signalIndicator, { y_fill: false });
+    item.add(signalIndicator, { y_fill: false, y_align: St.Align.MIDDLE });
 
     return item;
   }
