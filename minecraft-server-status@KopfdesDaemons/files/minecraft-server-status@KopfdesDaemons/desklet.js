@@ -73,7 +73,7 @@ class MyDesklet extends Desklet.Desklet {
 
     this.setContent(container);
 
-    for (const address of this.serverAddresses) {
+    const promises = this.serverAddresses.map(async address => {
       // Platzhalter für das Element erstellen, um die Reihenfolge zu bewahren
       const itemBin = new St.Bin({ x_expand: true, x_fill: true });
       container.add_child(itemBin);
@@ -81,29 +81,30 @@ class MyDesklet extends Desklet.Desklet {
       const loadingView = this.uiHelper.getServerListItemLoadingView({ name: address.name, scaleSize: this.scaleSize });
       itemBin.set_child(loadingView);
 
-      // Fange mögliche Fehler direkt ab, damit Promise.all nicht für alle abbricht, wenn ein Server offline ist
-      this.minecraftServerStatusHelper
-        .getServerStatus(address.address)
-        .catch(e => {
-          global.logError(`[${UUID}] Error getting status for ${address.address}: ${e}`);
-          return { online: false, players: 0, maxPlayers: 0, ping: 1000, faviconPath: null };
-        })
-        .then(status => {
-          // Abbrechen, falls in der Zwischenzeit das Layout neugeladen wurde
-          if (this._mainContainer !== container) return;
+      try {
+        const status = await this.minecraftServerStatusHelper.getServerStatus(address.address);
 
-          loadingView.destroy();
+        // Return when reload during loading
+        if (this._mainContainer !== container) return;
 
-          const options = {
-            name: address.name,
-            status: status,
-            scaleSize: this.scaleSize,
-          };
+        loadingView.destroy();
 
-          const serverItem = this.uiHelper.getServerListItem(options);
-          itemBin.set_child(serverItem);
-        });
-    }
+        const options = {
+          name: address.name,
+          status: status,
+          scaleSize: this.scaleSize,
+        };
+
+        const serverItem = this.uiHelper.getServerListItem(options);
+        itemBin.set_child(serverItem);
+      } catch (e) {
+        global.logError(`[${UUID}] Error getting status for ${address.address}: ${e}`);
+        const errorView = this.uiHelper.getServerListItemErrorView({ name: address.name, scaleSize: this.scaleSize });
+        itemBin.set_child(errorView);
+      }
+    });
+
+    await Promise.all(promises);
   }
 }
 

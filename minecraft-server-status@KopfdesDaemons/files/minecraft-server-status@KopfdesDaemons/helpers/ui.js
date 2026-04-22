@@ -140,4 +140,34 @@ var UiHelper = class {
 
     return loadingView;
   }
+
+  getServerListItemErrorView(options) {
+    const { name, scaleSize } = options;
+    const errorView = new St.BoxLayout();
+
+    // Error icon
+    errorView.set_style(`height: ${scaleSize * 3}em;`);
+    const errorIcon = new St.Icon({
+      icon_name: "dialog-warning-symbolic",
+      icon_type: St.IconType.SYMBOLIC,
+      style: `width: ${scaleSize * 1.5}em; height: ${scaleSize * 1.5}em; margin-right: ${scaleSize * 0.5}em;`,
+    });
+    errorView.add(errorIcon, { y_fill: false, y_align: St.Align.MIDDLE });
+
+    // Name
+    const nameLabel = new St.Label({ text: name });
+    nameLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    errorView.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
+
+    // Spacer
+    const spacer = new St.Bin({ x_expand: true });
+    errorView.add(spacer);
+
+    // Error label
+    const errorLabel = new St.Label({ text: _("Error loading status") });
+    errorLabel.set_style(`font-size: ${scaleSize * 1}em; color: red`);
+    errorView.add(errorLabel, { y_fill: false, y_align: St.Align.MIDDLE });
+
+    return errorView;
+  }
 };
