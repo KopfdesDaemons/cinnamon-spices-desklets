@@ -31,7 +31,6 @@ class MyDesklet extends Desklet.Desklet {
 
     // Properties
     this._mainContainer = null;
-    this._setupView = null;
     this._isReloading = false;
     this._refreshTimeoutId = null;
     this._startupTimeoutID = null;
@@ -77,6 +76,14 @@ class MyDesklet extends Desklet.Desklet {
 
   on_desklet_removed() {
     this.minecraftServerStatusHelper._removeCache();
+    if (this._refreshTimeoutId) {
+      Mainloop.source_remove(this._refreshTimeoutId);
+      this._refreshTimeoutId = null;
+    }
+    if (this._startupTimeoutID) {
+      Mainloop.source_remove(this._startupTimeoutID);
+      this._startupTimeoutID = null;
+    }
     if (this.settings && !this._isReloading) {
       this.settings.finalize();
     }
@@ -98,7 +105,6 @@ class MyDesklet extends Desklet.Desklet {
     }
     if (this.refreshInterval > 0) {
       this._refreshTimeoutId = Mainloop.timeout_add_seconds(this.refreshInterval * 60, () => {
-        this._refreshTimeoutId = null;
         this._setupLayout();
         return true;
       });
@@ -106,8 +112,6 @@ class MyDesklet extends Desklet.Desklet {
   }
 
   async _setupLayout() {
-    this._destroyViews();
-
     // Setup main container
     const container = new St.BoxLayout({ vertical: true });
     this._mainContainer = container;
@@ -123,12 +127,10 @@ class MyDesklet extends Desklet.Desklet {
 
     // Setup view
     if (this.serverAddresses.length === 0) {
-      this.setupView = this.uiHelper.getSetupView({ scaleSize: this.scaleSize });
-      container.add_child(this.setupView);
+      const setupView = this.uiHelper.getSetupView({ scaleSize: this.scaleSize });
+      container.add_child(setupView);
       return;
     }
-
-    this._destroyViews();
 
     const scrollView = new St.ScrollView({ overlay_scrollbars: true, clip_to_allocation: true });
     scrollView.set_style(`max-height: ${this.scaleSize * this.maxHeight}em;`);
@@ -167,13 +169,6 @@ class MyDesklet extends Desklet.Desklet {
     });
 
     await Promise.all(promises);
-  }
-
-  _destroyViews() {
-    if (this._setupView) {
-      this._setupView.destroy();
-      this._setupView = null;
-    }
   }
 
   _onContainerStyleChanged() {

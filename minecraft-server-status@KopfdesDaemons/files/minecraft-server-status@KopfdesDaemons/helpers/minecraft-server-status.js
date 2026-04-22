@@ -39,9 +39,17 @@ var MinecraftServerStatusHelper = class {
           const safeHost = host.replace(/[^a-z0-9]/gi, "_");
           const filePath = this.cacheDir + "/favicon_" + safeHost + "_" + port + ".png";
           const file = Gio.File.new_for_path(filePath);
-          const stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
-          stream.write_bytes(GLib.Bytes.new(decoded), null);
-          stream.close(null);
+          const stream = await new Promise((resolve, reject) => {
+            file.replace_async(null, false, Gio.FileCreateFlags.NONE, GLib.PRIORITY_DEFAULT, null, (f, res) => {
+              try {
+                resolve(f.replace_finish(res));
+              } catch (e) {
+                reject(e);
+              }
+            });
+          });
+          await this._writeBytesAsync(stream, GLib.Bytes.new(decoded));
+          await new Promise(resolve => stream.close_async(GLib.PRIORITY_DEFAULT, null, resolve));
           result.faviconPath = filePath;
         } catch (e) {
           global.logError(`[${UUID}] Error saving favicon: ${e}`);
@@ -335,30 +343,54 @@ var MinecraftServerStatusHelper = class {
     };
   }
 
-  _removeCache() {
+  _deleteAsync(file) {
+    return new Promise(resolve => {
+      file.delete_async(GLib.PRIORITY_DEFAULT, null, (f, res) => {
+        try {
+          f.delete_finish(res);
+        } catch (e) {}
+        resolve();
+      });
+    });
+  }
+
+  async _removeCache() {
     try {
       const cacheDirFile = Gio.File.new_for_path(this.cacheDir);
-      cacheDirFile.enumerate_children_async("standard::name", Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null, (file, res) => {
-        try {
-          const enumerator = file.enumerate_children_finish(res);
-          let info;
-          while ((info = enumerator.next_file(null)) !== null) {
-            try {
-              file.get_child(info.get_name()).delete(null);
-            } catch (e) {}
-          }
-          enumerator.close(null);
+
+      const enumerator = await new Promise((resolve, reject) => {
+        cacheDirFile.enumerate_children_async("standard::name", Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null, (file, res) => {
           try {
-            file.delete(null);
-          } catch (e) {}
-        } catch (e) {
-          if (e.code !== Gio.IOErrorEnum.NOT_FOUND) {
-            global.logError(`[${UUID}] Error removing cache: ${e}`);
+            resolve(file.enumerate_children_finish(res));
+          } catch (e) {
+            reject(e);
           }
-        }
+        });
       });
+
+      const getNextFiles = () =>
+        new Promise((resolve, reject) => {
+          enumerator.next_files_async(50, GLib.PRIORITY_DEFAULT, null, (enumObj, res) => {
+            try {
+              resolve(enumObj.next_files_finish(res));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+
+      let infos;
+      while ((infos = await getNextFiles()) && infos.length > 0) {
+        const deletePromises = infos.map(info => this._deleteAsync(cacheDirFile.get_child(info.get_name())));
+        await Promise.all(deletePromises);
+      }
+
+      enumerator.close(null);
+      await this._deleteAsync(cacheDirFile);
     } catch (e) {
-      global.logError(`[${UUID}] Error initiating cache removal: ${e}`);
+      if (e.code !== Gio.IOErrorEnum.NOT_FOUND) {
+        global.logError(`[${UUID}] Error removing cache: ${e}`);
+      }
     }
   }
 };
