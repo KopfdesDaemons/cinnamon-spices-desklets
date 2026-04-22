@@ -19,6 +19,7 @@ var UiHelper = class {
     const reloadButtonStyle = `width: ${1.6 * scaleSize}em; height: ${1.6 * scaleSize}em; padding: ${0.2 * scaleSize}em;`;
 
     const headline = new St.Label({ text: _("Minecraft Server Status") });
+    headline.set_style(`font-size: ${scaleSize * 1.2}em;`);
     header.add(headline, { y_fill: false });
 
     // Reload button
@@ -41,6 +42,18 @@ var UiHelper = class {
     return header;
   }
 
+  getSetupView(options) {
+    const { scaleSize } = options;
+    const setupUI = new St.BoxLayout();
+
+    const setupText = "Add server in the desklet settings.";
+    const setupLabel = new St.Label({ text: _(setupText) });
+    setupLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    setupUI.add(setupLabel);
+
+    return setupUI;
+  }
+
   getServerListItem(options) {
     const { name, status, scaleSize } = options;
 
@@ -61,6 +74,7 @@ var UiHelper = class {
 
     // Name
     const nameLabel = new St.Label({ text: name });
+    nameLabel.set_style(`font-size: ${scaleSize * 1}em;`);
     item.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Free Space
@@ -70,6 +84,7 @@ var UiHelper = class {
     // Player
     const playerCount = status.players.toString() + "/" + status.maxPlayers.toString();
     const playerLabel = new St.Label({ text: playerCount });
+    playerLabel.set_style(`font-size: ${scaleSize * 1}em;`);
     item.add(playerLabel, { y_fill: false, y_align: St.Align.MIDDLE });
 
     // Signal

@@ -29,6 +29,7 @@ class MyDesklet extends Desklet.Desklet {
 
     // Properties
     this._mainContainer = null;
+    this._setupView = null;
     this._isReloading = false;
 
     // Helpers
@@ -60,6 +61,8 @@ class MyDesklet extends Desklet.Desklet {
   }
 
   async _setupLayout() {
+    this._destroyViews();
+
     // Setup main container
     const container = new St.BoxLayout({ vertical: true });
     container.set_style(
@@ -73,8 +76,16 @@ class MyDesklet extends Desklet.Desklet {
 
     this.setContent(container);
 
+    // Setup view
+    if (this.serverAddresses.length === 0) {
+      this.setupView = this.uiHelper.getSetupView({ scaleSize: this.scaleSize });
+      container.add_child(this.setupView);
+      return;
+    }
+
+    this._destroyViews();
+
     const promises = this.serverAddresses.map(async address => {
-      // Platzhalter für das Element erstellen, um die Reihenfolge zu bewahren
       const itemBin = new St.Bin({ x_expand: true, x_fill: true });
       container.add_child(itemBin);
 
@@ -105,6 +116,13 @@ class MyDesklet extends Desklet.Desklet {
     });
 
     await Promise.all(promises);
+  }
+
+  _destroyViews() {
+    if (this._setupView) {
+      this._setupView.destroy();
+      this._setupView = null;
+    }
   }
 }
 
