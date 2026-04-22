@@ -39,14 +39,22 @@ class MyDesklet extends Desklet.Desklet {
     // Default settings
     this.scaleSize = 1;
     this.serverAddresses = [];
+    this.maxHeight = 30;
+    this.backgroundColor = "rgba(134, 134, 134, 0.58)";
+    this.hideDecoration = true;
 
+    // Bind settings
     this.settings = new Settings.DeskletSettings(this, metadata["uuid"], deskletId);
     this.settings.bindProperty(Settings.BindingDirection.IN, "scale-size", "scaleSize", this._setupLayout);
     this.settings.bindProperty(Settings.BindingDirection.IN, "server-addresses", "serverAddresses", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "max-height", "maxHeight", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "background-color", "backgroundColor", this._onContainerStyleChanged);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "hide-decorations", "hideDecorations", this._onDecorationsChanged);
   }
 
   on_desklet_added_to_desktop() {
     this._setupLayout();
+    this._onDecorationsChanged();
   }
 
   on_desklet_removed() {
@@ -60,15 +68,18 @@ class MyDesklet extends Desklet.Desklet {
     this._isReloading = true;
   }
 
+  _onDecorationsChanged() {
+    this.metadata["prevent-decorations"] = this.hideDecorations;
+    this._updateDecoration();
+  }
+
   async _setupLayout() {
     this._destroyViews();
 
     // Setup main container
     const container = new St.BoxLayout({ vertical: true });
-    container.set_style(
-      `width: ${this.scaleSize * 20}em; background-color: rgba(134, 134, 134, 0.58); padding: ${this.scaleSize * 1}em; border-radius: ${this.scaleSize * 0.3}em;`,
-    );
     this._mainContainer = container;
+    this._onContainerStyleChanged();
 
     // Header
     const header = this.uiHelper.getHeader({ scaleSize: this.scaleSize, reloadCallback: () => this._setupLayout() });
@@ -85,9 +96,15 @@ class MyDesklet extends Desklet.Desklet {
 
     this._destroyViews();
 
+    const scrollView = new St.ScrollView({ overlay_scrollbars: true, clip_to_allocation: true });
+    scrollView.set_style(`max-height: ${this.scaleSize * this.maxHeight}em;`);
+    const serverListContainer = new St.BoxLayout({ vertical: true });
+    scrollView.add_actor(serverListContainer);
+    container.add_child(scrollView);
+
     const promises = this.serverAddresses.map(async address => {
       const itemBin = new St.Bin({ x_expand: true, x_fill: true });
-      container.add_child(itemBin);
+      serverListContainer.add_child(itemBin);
 
       const loadingView = this.uiHelper.getServerListItemLoadingView({ name: address.name, scaleSize: this.scaleSize });
       itemBin.set_child(loadingView);
@@ -122,6 +139,14 @@ class MyDesklet extends Desklet.Desklet {
     if (this._setupView) {
       this._setupView.destroy();
       this._setupView = null;
+    }
+  }
+
+  _onContainerStyleChanged() {
+    if (this._mainContainer) {
+      this._mainContainer.set_style(
+        `width: ${this.scaleSize * 20}em; background-color: ${this.backgroundColor}; padding: ${this.scaleSize * 1}em; border-radius: ${this.scaleSize * 0.3}em;`,
+      );
     }
   }
 }

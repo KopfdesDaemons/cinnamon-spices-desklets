@@ -1,26 +1,31 @@
 {
   "layout": {
     "type": "layout",
-    "pages": ["general-page", "style-page"],
-    "general-page": {
+    "pages": ["server-page", "style-page"],
+    "server-page": {
       "type": "page",
-      "title": "General",
+      "title": "Server",
       "sections": ["server-section"]
     },
     "style-page": {
       "type": "page",
       "title": "Style",
-      "sections": ["style-section"]
-    },
-    "style-section": {
-      "type": "section",
-      "title": "Style",
-      "keys": ["scale-size"]
+      "sections": ["size-section", "background-section"]
     },
     "server-section": {
       "type": "section",
-      "title": "Style",
+      "title": "Server",
       "keys": ["server-addresses"]
+    },
+    "size-section": {
+      "type": "section",
+      "title": "Size",
+      "keys": ["scale-size", "max-height"]
+    },
+    "background-section": {
+      "type": "section",
+      "title": "Background",
+      "keys": ["background-color", "hide-decorations"]
     }
   },
   "scale-size": {
@@ -33,7 +38,6 @@
   },
   "server-addresses": {
     "type": "list",
-    "description": "List of displayed servers",
     "columns": [
       {
         "id": "name",
@@ -47,5 +51,24 @@
       }
     ],
     "default": []
+  },
+  "max-height": {
+    "type": "spinbutton",
+    "default": 30,
+    "min": 10,
+    "max": 100,
+    "step": 1,
+    "units": "em",
+    "description": "Max height"
+  },
+  "background-color": {
+    "type": "colorchooser",
+    "default": "rgba(134, 134, 134, 0.58)",
+    "description": "Background color"
+  },
+  "hide-decorations": {
+    "type": "checkbox",
+    "description": "Hide decorations",
+    "default": true
   }
 }
