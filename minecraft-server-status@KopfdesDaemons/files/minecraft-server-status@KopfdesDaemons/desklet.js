@@ -61,35 +61,49 @@ class MyDesklet extends Desklet.Desklet {
 
   async _setupLayout() {
     // Setup main container
-    this._mainContainer = new St.BoxLayout({ vertical: true });
-    this._mainContainer.set_style(
+    const container = new St.BoxLayout({ vertical: true });
+    container.set_style(
       `width: ${this.scaleSize * 20}em; background-color: rgba(134, 134, 134, 0.58); padding: ${this.scaleSize * 1}em; border-radius: ${this.scaleSize * 0.3}em;`,
     );
+    this._mainContainer = container;
 
     // Header
     const header = this.uiHelper.getHeader({ scaleSize: this.scaleSize, reloadCallback: () => this._setupLayout() });
-    this._mainContainer.add_child(header);
+    container.add_child(header);
 
-    // Loading label
-    const loadingLabel = new St.Label({ text: _("Loading...") });
-    this._mainContainer.add_child(loadingLabel);
-
-    this.setContent(this._mainContainer);
-
-    this._mainContainer.remove_child(loadingLabel);
+    this.setContent(container);
 
     for (const address of this.serverAddresses) {
-      const status = await this.minecraftServerStatusHelper.getServerStatus(address.address);
-      const options = {
-        name: address.name,
-        status: status,
-        scaleSize: this.scaleSize,
-      };
+      // Platzhalter für das Element erstellen, um die Reihenfolge zu bewahren
+      const itemBin = new St.Bin({ x_expand: true, x_fill: true });
+      container.add_child(itemBin);
 
-      const serverItem = this.uiHelper.getServerListItem(options);
-      this._mainContainer.add_child(serverItem);
+      const loadingView = this.uiHelper.getServerListItemLoadingView({ name: address.name, scaleSize: this.scaleSize });
+      itemBin.set_child(loadingView);
+
+      // Fange mögliche Fehler direkt ab, damit Promise.all nicht für alle abbricht, wenn ein Server offline ist
+      this.minecraftServerStatusHelper
+        .getServerStatus(address.address)
+        .catch(e => {
+          global.logError(`[${UUID}] Error getting status for ${address.address}: ${e}`);
+          return { online: false, players: 0, maxPlayers: 0, ping: 1000, faviconPath: null };
+        })
+        .then(status => {
+          // Abbrechen, falls in der Zwischenzeit das Layout neugeladen wurde
+          if (this._mainContainer !== container) return;
+
+          loadingView.destroy();
+
+          const options = {
+            name: address.name,
+            status: status,
+            scaleSize: this.scaleSize,
+          };
+
+          const serverItem = this.uiHelper.getServerListItem(options);
+          itemBin.set_child(serverItem);
+        });
     }
-    this._mainContainer.add_child(serverItem);
   }
 }
 

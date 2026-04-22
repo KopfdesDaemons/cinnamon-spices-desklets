@@ -75,6 +75,8 @@ var UiHelper = class {
     // Signal
     const signalIndicator = this._getSignalIndicator(scaleSize, status.ping);
     item.add(signalIndicator, { y_fill: false, y_align: St.Align.MIDDLE });
+    const pingTooltipText = _("%s ms").format(status.ping);
+    new Tooltips.Tooltip(signalIndicator, pingTooltipText);
 
     return item;
   }
@@ -107,8 +109,35 @@ var UiHelper = class {
       signalBox.add(bar, { y_fill: false, y_align: St.Align.END });
     }
 
-    const container = new St.Bin({ child: signalBox });
+    const container = new St.Bin({ child: signalBox, reactive: true, track_hover: true });
 
     return container;
+  }
+
+  getServerListItemLoadingView(options) {
+    const { name, scaleSize } = options;
+    const loadingView = new St.BoxLayout();
+    loadingView.set_style(`height: ${scaleSize * 3}em;`);
+
+    const loadingIcon = new St.Icon({
+      icon_name: "content-loading-symbolic",
+      icon_type: St.IconType.SYMBOLIC,
+      style: `width: ${scaleSize * 1.5}em; height: ${scaleSize * 1.5}em; margin-right: ${scaleSize * 0.5}em;`,
+    });
+
+    loadingView.add(loadingIcon, { y_fill: false, y_align: St.Align.MIDDLE });
+
+    const nameLabel = new St.Label({ text: name });
+    nameLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    loadingView.add(nameLabel, { y_fill: false, y_align: St.Align.MIDDLE });
+
+    const spacer = new St.Bin({ x_expand: true });
+    loadingView.add(spacer);
+
+    const loadingLabel = new St.Label({ text: _("Loading...") });
+    loadingLabel.set_style(`font-size: ${scaleSize * 1}em;`);
+    loadingView.add(loadingLabel, { y_fill: false, y_align: St.Align.MIDDLE });
+
+    return loadingView;
   }
 };
