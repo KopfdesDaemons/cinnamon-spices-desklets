@@ -4,7 +4,7 @@ const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
 const Gio = imports.gi.Gio;
 
-const UUID = "devtest-minecraft-server-status@KopfdesDaemons";
+const UUID = "minecraft-server-status@KopfdesDaemons";
 
 Gettext.bindtextdomain(UUID, GLib.get_user_data_dir() + "/locale");
 

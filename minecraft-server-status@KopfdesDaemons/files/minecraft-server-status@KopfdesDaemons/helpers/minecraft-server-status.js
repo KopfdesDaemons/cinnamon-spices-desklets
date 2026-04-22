@@ -2,7 +2,7 @@ const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const ByteArray = imports.byteArray;
 
-const UUID = "devtest-minecraft-server-status@KopfdesDaemons";
+const UUID = "minecraft-server-status@KopfdesDaemons";
 
 var MinecraftServerStatusHelper = class {
   cacheDir;

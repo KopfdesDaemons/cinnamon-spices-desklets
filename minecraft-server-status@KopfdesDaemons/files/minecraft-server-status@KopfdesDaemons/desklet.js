@@ -5,7 +5,7 @@ const Gettext = imports.gettext;
 const Settings = imports.ui.settings;
 const Mainloop = imports.mainloop;
 
-const UUID = "devtest-minecraft-server-status@KopfdesDaemons";
+const UUID = "minecraft-server-status@KopfdesDaemons";
 
 let MinecraftServerStatusHelper, UiHelper;
 if (typeof require !== "undefined") {
