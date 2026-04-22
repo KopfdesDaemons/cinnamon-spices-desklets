@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: google-news@KopfdesDaemons 1.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/linuxmint/cinnamon-spices-desklets/"
 "issues\n"
-"POT-Creation-Date: 2026-04-17 21:27+0200\n"
+"POT-Creation-Date: 2026-04-22 18:29+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -23,38 +23,42 @@ msgstr ""
 msgid "Google News"
 msgstr "Google News"
 
-#. desklet.js:30
+#. desklet.js:30 helpers/ui.js:186
 msgid "Reload"
 msgstr "Neuladen"
 
-#. helpers/google-news.js:146 helpers/google-news.js:159
+#. helpers/google-news.js:151 helpers/google-news.js:164
 msgid "Just now"
 msgstr "Eben gerade"
 
-#. helpers/google-news.js:153
+#. helpers/google-news.js:158
 #, javascript-format
 msgid "%s d"
 msgstr "%s T"
 
-#. helpers/google-news.js:155
+#. helpers/google-news.js:160
 #, javascript-format
 msgid "%s h"
 msgstr "%s Std."
 
-#. helpers/google-news.js:157
+#. helpers/google-news.js:162
 #, javascript-format
 msgid "%s m"
 msgstr "%s Min."
 
-#. helpers/ui.js:78
+#. helpers/ui.js:81
 msgid "read more"
 msgstr "mehr lesen"
 
-#. helpers/ui.js:98
+#. helpers/ui.js:86
+msgid "Open in browser"
+msgstr "Im Browser öffnen"
+
+#. helpers/ui.js:103
 msgid "Loading..."
 msgstr "Lade..."
 
-#. helpers/ui.js:122
+#. helpers/ui.js:127
 msgid "Error loading news"
 msgstr "Fehler beim Laden der Nachrichten"
 

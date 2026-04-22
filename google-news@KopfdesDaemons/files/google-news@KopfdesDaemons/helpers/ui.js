@@ -1,8 +1,10 @@
 const St = imports.gi.St;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
+const Pango = imports.gi.Pango;
 const Gettext = imports.gettext;
 const Util = imports.misc.util;
+const Tooltips = imports.ui.tooltips;
 
 const UUID = "google-news@KopfdesDaemons";
 const DESKLET_DIR = imports.ui.deskletManager.deskletMeta[UUID].path;
@@ -36,6 +38,7 @@ var UiHelper = class UiHelper {
       const title = new St.Label({ text: item.title });
       title.set_style(`font-size: ${scaleSize * 1.5}em;`);
       title.clutter_text.set_line_wrap(true);
+      title.clutter_text.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR);
       newsItemContainer.add_child(title);
 
       // Spacer
@@ -80,6 +83,8 @@ var UiHelper = class UiHelper {
       readMoreButton.connect("clicked", () => {
         Util.spawn(["xdg-open", item.link]);
       });
+      new Tooltips.Tooltip(readMoreButton, _("Open in browser"));
+
       footer.add_child(readMoreButton);
 
       newsItemContainer.add_child(footer);
@@ -128,6 +133,7 @@ var UiHelper = class UiHelper {
       const errorMessageLabel = new St.Label({ text: errorMessage.toString() });
       errorMessageLabel.set_style(`font-size: ${scaleSize * 1}em;`);
       errorMessageLabel.clutter_text.set_line_wrap(true);
+      errorMessageLabel.clutter_text.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR);
       errorView.add_child(errorMessageLabel);
     }
 
@@ -177,6 +183,7 @@ var UiHelper = class UiHelper {
         style_class: "google-news-reload-button",
       });
 
+      new Tooltips.Tooltip(reloadButton, _("Reload"));
       reloadButton.set_child(reloadIcon);
       buttonBox.add_actor(reloadButton);
       header.add_child(buttonBox);
