@@ -1,0 +1,51 @@
+{
+  "layout": {
+    "type": "layout",
+    "pages": ["general-page", "style-page"],
+    "general-page": {
+      "type": "page",
+      "title": "General",
+      "sections": ["server-section"]
+    },
+    "style-page": {
+      "type": "page",
+      "title": "Style",
+      "sections": ["style-section"]
+    },
+    "style-section": {
+      "type": "section",
+      "title": "Style",
+      "keys": ["scale-size"]
+    },
+    "server-section": {
+      "type": "section",
+      "title": "Style",
+      "keys": ["server-addresses"]
+    }
+  },
+  "scale-size": {
+    "type": "scale",
+    "default": 1,
+    "min": 0.5,
+    "max": 3,
+    "step": 0.1,
+    "description": "Desklet scale size"
+  },
+  "server-addresses": {
+    "type": "list",
+    "description": "List of displayed servers",
+    "columns": [
+      {
+        "id": "name",
+        "title": "Name",
+        "type": "string"
+      },
+      {
+        "id": "address",
+        "title": "Address",
+        "type": "string"
+      }
+    ],
+    "default": []
+  }
+}
