@@ -10,12 +10,12 @@
     "style-page": {
       "type": "page",
       "title": "Style",
-      "sections": ["size-section", "background-section"]
+      "sections": ["size-section", "background-section", "layout-section"]
     },
     "server-section": {
       "type": "section",
       "title": "Server",
-      "keys": ["server-addresses"]
+      "keys": ["server-addresses", "refresh-interval"]
     },
     "size-section": {
       "type": "section",
@@ -26,6 +26,11 @@
       "type": "section",
       "title": "Background",
       "keys": ["background-color", "hide-decorations"]
+    },
+    "layout-section": {
+      "type": "section",
+      "title": "Layout",
+      "keys": ["show-header"]
     }
   },
   "scale-size": {
@@ -70,5 +75,19 @@
     "type": "checkbox",
     "description": "Hide decorations",
     "default": true
+  },
+  "refresh-interval": {
+    "type": "spinbutton",
+    "default": 1,
+    "min": 1,
+    "max": 1000,
+    "step": 1,
+    "units": "minutes",
+    "description": "Refresh interval"
+  },
+  "show-header": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Show header"
   }
 }

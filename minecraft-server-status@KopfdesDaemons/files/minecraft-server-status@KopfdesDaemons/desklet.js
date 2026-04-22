@@ -3,6 +3,7 @@ const St = imports.gi.St;
 const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
 const Settings = imports.ui.settings;
+const Mainloop = imports.mainloop;
 
 const UUID = "devtest-minecraft-server-status@KopfdesDaemons";
 
@@ -26,11 +27,14 @@ class MyDesklet extends Desklet.Desklet {
   constructor(metadata, deskletId) {
     super(metadata, deskletId);
     this.setHeader(_("Minecraft Server Status"));
+    this._menu.addAction(_("Reload"), () => this._setupLayout());
 
     // Properties
     this._mainContainer = null;
     this._setupView = null;
     this._isReloading = false;
+    this._refreshTimeoutId = null;
+    this._startupTimeoutID = null;
 
     // Helpers
     this.minecraftServerStatusHelper = new MinecraftServerStatusHelper(deskletId);
@@ -42,6 +46,8 @@ class MyDesklet extends Desklet.Desklet {
     this.maxHeight = 30;
     this.backgroundColor = "rgba(134, 134, 134, 0.58)";
     this.hideDecoration = true;
+    this.refreshInterval = 1;
+    this.showHeader = true;
 
     // Bind settings
     this.settings = new Settings.DeskletSettings(this, metadata["uuid"], deskletId);
@@ -50,11 +56,23 @@ class MyDesklet extends Desklet.Desklet {
     this.settings.bindProperty(Settings.BindingDirection.IN, "max-height", "maxHeight", this._setupLayout);
     this.settings.bindProperty(Settings.BindingDirection.IN, "background-color", "backgroundColor", this._onContainerStyleChanged);
     this.settings.bindProperty(Settings.BindingDirection.IN, "hide-decorations", "hideDecorations", this._onDecorationsChanged);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "refresh-interval", "refreshInterval", this._setRefreshInterval);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "show-header", "showHeader", this._setupLayout);
   }
 
   on_desklet_added_to_desktop() {
     this._setupLayout();
+    this._setRefreshInterval();
     this._onDecorationsChanged();
+
+    // The first request after system start will fail
+    // Delay to ensure network services are ready and try again
+    if (this._startupTimeoutID) Mainloop.source_remove(this._startupTimeoutID);
+    this._startupTimeoutID = Mainloop.timeout_add_seconds(10, () => {
+      this._setupLayout();
+      this._startupTimeoutID = null;
+      return false;
+    });
   }
 
   on_desklet_removed() {
@@ -73,6 +91,20 @@ class MyDesklet extends Desklet.Desklet {
     this._updateDecoration();
   }
 
+  _setRefreshInterval() {
+    if (this._refreshTimeoutId) {
+      Mainloop.source_remove(this._refreshTimeoutId);
+      this._refreshTimeoutId = null;
+    }
+    if (this.refreshInterval > 0) {
+      this._refreshTimeoutId = Mainloop.timeout_add_seconds(this.refreshInterval * 60, () => {
+        this._refreshTimeoutId = null;
+        this._setupLayout();
+        return true;
+      });
+    }
+  }
+
   async _setupLayout() {
     this._destroyViews();
 
@@ -82,8 +114,10 @@ class MyDesklet extends Desklet.Desklet {
     this._onContainerStyleChanged();
 
     // Header
-    const header = this.uiHelper.getHeader({ scaleSize: this.scaleSize, reloadCallback: () => this._setupLayout() });
-    container.add_child(header);
+    if (this.showHeader) {
+      const header = this.uiHelper.getHeader({ scaleSize: this.scaleSize, reloadCallback: () => this._setupLayout() });
+      container.add_child(header);
+    }
 
     this.setContent(container);
 
