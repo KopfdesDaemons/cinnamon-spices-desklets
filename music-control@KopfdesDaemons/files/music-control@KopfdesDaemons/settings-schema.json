@@ -1,0 +1,10 @@
+{
+  "scale-size": {
+    "type": "scale",
+    "default": 1,
+    "min": 0.5,
+    "max": 3,
+    "step": 0.1,
+    "description": "Desklet scale size"
+  }
+}
