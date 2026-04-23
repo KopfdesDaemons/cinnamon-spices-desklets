@@ -4,6 +4,12 @@ const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
 const Gio = imports.gi.Gio;
 const Settings = imports.ui.settings;
+const Interfaces = imports.misc.interfaces;
+const Util = imports.misc.util;
+
+const MEDIA_PLAYER_2_PATH = "/org/mpris/MediaPlayer2";
+const MEDIA_PLAYER_2_NAME = "org.mpris.MediaPlayer2";
+const MEDIA_PLAYER_2_PLAYER_NAME = "org.mpris.MediaPlayer2.Player";
 
 const UUID = "music-control@KopfdesDaemons";
 
@@ -13,23 +19,217 @@ function _(str) {
   return Gettext.dgettext(UUID, str);
 }
 
+class Player {
+  constructor(desklet, busname, owner) {
+    this._desklet = desklet;
+    this._busName = busname;
+    this._owner = owner;
+
+    let asyncReadyCb = (proxy, error, property) => {
+      if (error) global.logError(error);
+      else {
+        this[property] = proxy;
+        this._dbus_acquired();
+      }
+    };
+
+    Interfaces.getDBusProxyWithOwnerAsync(MEDIA_PLAYER_2_NAME, this._busName, (p, e) => asyncReadyCb(p, e, "_mediaServer"));
+    Interfaces.getDBusProxyWithOwnerAsync(MEDIA_PLAYER_2_PLAYER_NAME, this._busName, (p, e) => asyncReadyCb(p, e, "_mediaServerPlayer"));
+    Interfaces.getDBusPropertiesAsync(this._busName, MEDIA_PLAYER_2_PATH, (p, e) => asyncReadyCb(p, e, "_prop"));
+  }
+
+  _dbus_acquired() {
+    if (!this._prop || !this._mediaServerPlayer || !this._mediaServer) return;
+    this._propChangedId = this._prop.connectSignal("PropertiesChanged", (proxy, sender, [iface, props]) => {
+      if (props.PlaybackStatus) this._desklet._updateStatus(this._owner, props.PlaybackStatus.unpack());
+      if (props.Metadata) this._desklet._updateMetadata(this._owner, props.Metadata.deep_unpack());
+    });
+    this._desklet._updateStatus(this._owner, this._mediaServerPlayer.PlaybackStatus);
+    this._desklet._updateMetadata(this._owner, this._mediaServerPlayer.Metadata);
+  }
+
+  destroy() {
+    if (this._prop && this._propChangedId) this._prop.disconnectSignal(this._propChangedId);
+  }
+}
+
 class MyDesklet extends Desklet.Desklet {
   constructor(metadata, deskletId) {
     super(metadata, deskletId);
     this.setHeader(_("Music Control"));
 
-    this._imagePath = metadata.path + "/images/rapido.jpg";
+    this._currentCover = this._imagePath;
 
     // Default settings
     this.scaleSize = 1;
+    this.size = 18;
 
     // Bind settings
     this.settings = new Settings.DeskletSettings(this, metadata["uuid"], deskletId);
     this.settings.bindProperty(Settings.BindingDirection.IN, "scale-size", "scaleSize", this._onScaleChanged);
+
+    this._players = {};
+    this._activePlayer = null;
+    this._dbus = null;
+    this._trackCoverFileTmp = null;
+
+    Interfaces.getDBusAsync((proxy, error) => {
+      if (error) return;
+      this._dbus = proxy;
+      let name_regex = /^org\.mpris\.MediaPlayer2\./;
+
+      this._dbus.ListNamesRemote(names => {
+        for (let n in names[0]) {
+          let name = names[0][n];
+          if (name_regex.test(name)) this._dbus.GetNameOwnerRemote(name, owner => this._addPlayer(name, owner[0]));
+        }
+      });
+
+      this._ownerChangedId = this._dbus.connectSignal("NameOwnerChanged", (proxy, sender, [name, old_owner, new_owner]) => {
+        if (name_regex.test(name)) {
+          if (new_owner && !old_owner) this._addPlayer(name, new_owner);
+          else if (old_owner && !new_owner) this._removePlayer(name, old_owner);
+          else this._changePlayerOwner(name, old_owner, new_owner);
+        }
+      });
+    });
   }
 
   _onScaleChanged() {
     this._setupLayout();
+  }
+
+  on_desklet_removed() {
+    if (this._ownerChangedId && this._dbus) {
+      this._dbus.disconnectSignal(this._ownerChangedId);
+    }
+    for (let i in this._players) {
+      this._players[i].destroy();
+    }
+  }
+
+  _addPlayer(busName, owner) {
+    if (!this._players[owner] && owner) {
+      let player = new Player(this, busName, owner);
+      this._players[owner] = player;
+      if (!this._activePlayer) this._activePlayer = owner;
+    }
+  }
+
+  _removePlayer(busName, owner) {
+    if (this._players[owner] && this._players[owner]._busName == busName) {
+      this._players[owner].destroy();
+      delete this._players[owner];
+
+      if (this._activePlayer == owner) {
+        this._activePlayer = null;
+        for (let i in this._players) {
+          this._activePlayer = i;
+          this._updateMetadata(i, this._players[i]._mediaServerPlayer.Metadata);
+          this._updateStatus(i, this._players[i]._mediaServerPlayer.PlaybackStatus);
+          break;
+        }
+        if (!this._activePlayer) {
+          if (this._title) this._title.set_text(_("No music playing"));
+          if (this._artist) this._artist.set_text("");
+          this._showCover(this._imagePath);
+          if (this._playBtnIcon) this._playBtnIcon.set_icon_name("media-playback-start");
+        }
+      }
+    }
+  }
+
+  _changePlayerOwner(busName, oldOwner, newOwner) {
+    if (this._players[oldOwner] && busName == this._players[oldOwner]._busName) {
+      this._players[newOwner] = this._players[oldOwner];
+      this._players[newOwner]._owner = newOwner;
+      delete this._players[oldOwner];
+      if (this._activePlayer == oldOwner) this._activePlayer = newOwner;
+    }
+  }
+
+  _updateMetadata(owner, metadata) {
+    if (owner !== this._activePlayer && this._activePlayer !== null) return;
+    if (!metadata) return;
+
+    let artist = _("Unknown Artist");
+    if (metadata["xesam:artist"]) {
+      let artistVal = metadata["xesam:artist"];
+      if (artistVal.get_type_string) {
+        switch (artistVal.get_type_string()) {
+          case "s":
+            artist = artistVal.unpack();
+            break;
+          case "as":
+            artist = artistVal.deep_unpack().join(", ");
+            break;
+        }
+      } else {
+        artist = artistVal.toString();
+      }
+    }
+    let title = _("Unknown Title");
+    if (metadata["xesam:title"]) {
+      title = metadata["xesam:title"].unpack ? metadata["xesam:title"].unpack() : metadata["xesam:title"].toString();
+    }
+
+    if (this._title) this._title.set_text(title);
+    if (this._artist) this._artist.set_text(artist);
+
+    let artUrl = metadata["mpris:artUrl"] ? (metadata["mpris:artUrl"].unpack ? metadata["mpris:artUrl"].unpack() : metadata["mpris:artUrl"]) : null;
+    if (artUrl) {
+      if (this._trackCoverFile != artUrl) {
+        this._trackCoverFile = artUrl;
+        if (artUrl.match(/^http/)) {
+          if (!this._trackCoverFileTmp) this._trackCoverFileTmp = Gio.file_new_tmp("XXXXXX.mediaplayer-cover")[0];
+          Util.spawn_async(["wget", artUrl, "-O", this._trackCoverFileTmp.get_path()], () => this._showCover(this._trackCoverFileTmp.get_path()));
+        } else if (artUrl.match(/data:image\/(png|jpeg);base64,/)) {
+          if (!this._trackCoverFileTmp) this._trackCoverFileTmp = Gio.file_new_tmp("XXXXXX.mediaplayer-cover")[0];
+          const cover_base64 = artUrl.split(",")[1];
+          const base64_decode = data => new Promise(resolve => resolve(GLib.base64_decode(data)));
+          if (cover_base64) {
+            base64_decode(cover_base64)
+              .then(decoded => {
+                this._trackCoverFileTmp.replace_contents(decoded, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+                return this._trackCoverFileTmp.get_path();
+              })
+              .then(path => this._showCover(path));
+          }
+        } else {
+          let cover_path = decodeURIComponent(artUrl).replace("file://", "");
+          this._showCover(cover_path);
+        }
+      }
+    } else {
+      this._trackCoverFile = null;
+      this._showCover(this._imagePath);
+    }
+  }
+
+  _updateStatus(owner, status) {
+    if (!status) return;
+
+    if (owner !== this._activePlayer && status === "Playing") {
+      this._activePlayer = owner;
+      if (this._players[owner] && this._players[owner]._mediaServerPlayer) {
+        this._updateMetadata(owner, this._players[owner]._mediaServerPlayer.Metadata);
+      }
+    }
+    if (owner !== this._activePlayer) return;
+
+    if (this._playBtnIcon) {
+      if (status === "Playing") this._playBtnIcon.set_icon_name("media-playback-pause");
+      else this._playBtnIcon.set_icon_name("media-playback-start");
+    }
+  }
+
+  _showCover(coverPath) {
+    this._currentCover = coverPath || this._imagePath;
+    if (this._mainWidget) {
+      this._mainWidget.set_style(
+        `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${3 * this.scaleSize}em; border: ${0.1 * this.scaleSize}em solid rgba(255, 255, 255, 1);`,
+      );
+    }
   }
 
   on_desklet_added_to_desktop() {
@@ -37,63 +237,86 @@ class MyDesklet extends Desklet.Desklet {
   }
 
   _setupLayout() {
-    const container = this._getContainer();
-    this.setContent(container);
+    if (this._mainWidget) {
+      this._mainWidget.destroy();
+    }
+    this._mainWidget = this._getContainer();
+    this.setContent(this._mainWidget);
+
+    if (this._activePlayer && this._players[this._activePlayer] && this._players[this._activePlayer]._mediaServerPlayer) {
+      this._updateMetadata(this._activePlayer, this._players[this._activePlayer]._mediaServerPlayer.Metadata);
+      this._updateStatus(this._activePlayer, this._players[this._activePlayer]._mediaServerPlayer.PlaybackStatus);
+    }
   }
 
   _getContainer() {
-    const widget = new St.BoxLayout({
+    this._mainWidget = new St.BoxLayout({
       vertical: true,
-      style: `background-image: url("file://${this._imagePath}"); background-size: cover; background-position: center; width: ${20 * this.scaleSize}em; height: ${20 * this.scaleSize}em; border-radius: ${3 * this.scaleSize}em; border: ${0.1 * this.scaleSize}em solid rgba(255, 255, 255, 1);`,
+      clip_to_allocation: true,
+      style: `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${3 * this.scaleSize}em; border: ${0.1 * this.scaleSize}em solid rgba(255, 255, 255, 1);`,
     });
 
     // Spacer to push content into the lower half
-    const spacer = new St.Widget({ style: `height: ${10 * this.scaleSize}em;` });
-    widget.add_child(spacer);
+    const spacer = new St.Widget({ style: `height: ${8 * this.scaleSize}em;` });
+    this._mainWidget.add_child(spacer);
 
     // Title
-    const titleRow = new St.Bin({ style: `width: ${20 * this.scaleSize}em; background-color: rgba(0, 0, 0, 0.7);` });
-    const title = new St.Label({
-      text: "Schnell, Schneller, Rapido",
-      style: `text-align: center; font-size: ${1.5 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${11 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
+    const titleRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${this.size * this.scaleSize}em;` });
+    this._title = new St.Label({
+      text: _("No music playing"),
+      style: `background-color: rgba(0, 0, 0, 0.7); text-align: center; font-size: ${1.5 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${11 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
     });
-    titleRow.set_child(title);
-    widget.add_child(titleRow);
+    titleRow.set_child(this._title);
+    this._mainWidget.add_child(titleRow);
 
     // Artist
-    const artistRow = new St.Bin({ style: `width: ${20 * this.scaleSize}em; background-color: rgba(0, 0, 0, 0.7);` });
-    const artist = new St.Label({
-      text: "Rapido",
-      style: `text-align: center; font-size: ${1 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${11 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
+    const artistRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${this.size * this.scaleSize}em;` });
+    this._artist = new St.Label({
+      text: _("Unknown Artist"),
+      style: `background-color: rgba(0, 0, 0, 0.7); text-align: center; font-size: ${1 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${11 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
     });
-    artistRow.set_child(artist);
-    widget.add_child(artistRow);
+    artistRow.set_child(this._artist);
+    this._mainWidget.add_child(artistRow);
 
     // Controls
-    const controlsRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${20 * this.scaleSize}em;` });
+    const controlsRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${this.size * this.scaleSize}em;` });
     const controlsRowContent = new St.BoxLayout({
-      style: `margin-top: ${1 * this.scaleSize}em; background-color: rgba(0, 0, 0, 0.7); padding: ${0.2 * this.scaleSize}em ${0.5 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em;`,
+      style: `margin-top: ${0.5 * this.scaleSize}em; background-color: rgba(0, 0, 0, 0.7); border-radius: ${1 * this.scaleSize}em;`,
     });
 
-    const controlButtonStyle = `height: ${3 * this.scaleSize}em; width: ${3 * this.scaleSize}em; pdding: ${0.2 * this.scaleSize}em; border-radius: ${0.2 * this.scaleSize}em;`;
+    const controlButtonStyle = `height: ${3 * this.scaleSize}em; width: ${3 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em;`;
 
-    const createButton = iconName => {
-      return new St.Button({
-        child: new St.Icon({ icon_name: iconName, icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle }),
-        style_class: "music-control-button",
-        style: controlButtonStyle,
-      });
-    };
+    this._prevBtnIcon = new St.Icon({ icon_name: "media-seek-backward", icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle });
+    const prevBtn = new St.Button({ child: this._prevBtnIcon, style_class: "music-control-button", style: controlButtonStyle });
+    prevBtn.connect("clicked", () => {
+      if (this._activePlayer && this._players[this._activePlayer]) {
+        this._players[this._activePlayer]._mediaServerPlayer.PreviousRemote();
+      }
+    });
+    controlsRowContent.add_child(prevBtn);
 
-    controlsRowContent.add_child(createButton("media-seek-backward"));
-    controlsRowContent.add_child(createButton("media-playback-start"));
-    controlsRowContent.add_child(createButton("media-playback-pause"));
-    controlsRowContent.add_child(createButton("media-seek-forward"));
+    this._playBtnIcon = new St.Icon({ icon_name: "media-playback-start", icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle });
+    const playBtn = new St.Button({ child: this._playBtnIcon, style_class: "music-control-button", style: controlButtonStyle });
+    playBtn.connect("clicked", () => {
+      if (this._activePlayer && this._players[this._activePlayer]) {
+        this._players[this._activePlayer]._mediaServerPlayer.PlayPauseRemote();
+      }
+    });
+    controlsRowContent.add_child(playBtn);
+
+    this._nextBtnIcon = new St.Icon({ icon_name: "media-seek-forward", icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle });
+    const nextBtn = new St.Button({ child: this._nextBtnIcon, style_class: "music-control-button", style: controlButtonStyle });
+    nextBtn.connect("clicked", () => {
+      if (this._activePlayer && this._players[this._activePlayer]) {
+        this._players[this._activePlayer]._mediaServerPlayer.NextRemote();
+      }
+    });
+    controlsRowContent.add_child(nextBtn);
 
     controlsRow.set_child(controlsRowContent);
-    widget.add_child(controlsRow);
+    this._mainWidget.add_child(controlsRow);
 
-    return widget;
+    return this._mainWidget;
   }
 }
 
