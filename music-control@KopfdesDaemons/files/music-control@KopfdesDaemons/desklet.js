@@ -63,10 +63,18 @@ class MyDesklet extends Desklet.Desklet {
     // Default settings
     this.scaleSize = 1;
     this.size = 18;
+    this.borderColor = "#ffffff";
+    this.borderSize = 0.1;
+    this.borderRadius = 3;
+    this.hideDecorations = true;
 
     // Bind settings
     this.settings = new Settings.DeskletSettings(this, metadata["uuid"], deskletId);
-    this.settings.bindProperty(Settings.BindingDirection.IN, "scale-size", "scaleSize", this._onScaleChanged);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "scale-size", "scaleSize", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "border-color", "borderColor", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "border-size", "borderSize", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "border-radius", "borderRadius", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "hide-decorations", "hideDecorations", this._onDecorationsChanged);
 
     this._players = {};
     this._activePlayer = null;
@@ -95,8 +103,14 @@ class MyDesklet extends Desklet.Desklet {
     });
   }
 
-  _onScaleChanged() {
+  on_desklet_added_to_desktop() {
     this._setupLayout();
+    this._onDecorationsChanged();
+  }
+
+  _onDecorationsChanged() {
+    this.metadata["prevent-decorations"] = this.hideDecorations;
+    this._updateDecoration();
   }
 
   on_desklet_removed() {
@@ -131,7 +145,7 @@ class MyDesklet extends Desklet.Desklet {
         }
         if (!this._activePlayer) {
           if (this._title) this._title.set_text(_("No music playing"));
-          if (this._artist) this._artist.set_text("");
+          if (this._artist) this._artist.set_text("No music playing");
           this._showCover(this._imagePath);
           if (this._playBtnIcon) this._playBtnIcon.set_icon_name("media-playback-start");
         }
@@ -227,13 +241,9 @@ class MyDesklet extends Desklet.Desklet {
     this._currentCover = coverPath || this._imagePath;
     if (this._mainWidget) {
       this._mainWidget.set_style(
-        `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${3 * this.scaleSize}em; border: ${0.1 * this.scaleSize}em solid rgba(255, 255, 255, 1);`,
+        `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${this.borderSize * this.scaleSize}em solid ${this.borderColor};`,
       );
     }
-  }
-
-  on_desklet_added_to_desktop() {
-    this._setupLayout();
   }
 
   _setupLayout() {
@@ -253,18 +263,18 @@ class MyDesklet extends Desklet.Desklet {
     this._mainWidget = new St.BoxLayout({
       vertical: true,
       clip_to_allocation: true,
-      style: `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${3 * this.scaleSize}em; border: ${0.1 * this.scaleSize}em solid rgba(255, 255, 255, 1);`,
+      style: `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${this.borderSize * this.scaleSize}em solid ${this.borderColor};`,
     });
 
     // Spacer to push content into the lower half
-    const spacer = new St.Widget({ style: `height: ${8 * this.scaleSize}em;` });
+    const spacer = new St.Widget({ style: `height: ${(this.size / 2) * this.scaleSize}em;` });
     this._mainWidget.add_child(spacer);
 
     // Title
-    const titleRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${this.size * this.scaleSize}em;` });
+    const titleRow = new St.Bin({ x_align: St.Align.MIDDLE });
     this._title = new St.Label({
       text: _("No music playing"),
-      style: `background-color: rgba(0, 0, 0, 0.7); text-align: center; font-size: ${1.5 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${11 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
+      style: `background-color: rgba(0, 0, 0, 0.7); text-align: center; font-size: ${1.5 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${this.size}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
     });
     titleRow.set_child(this._title);
     this._mainWidget.add_child(titleRow);

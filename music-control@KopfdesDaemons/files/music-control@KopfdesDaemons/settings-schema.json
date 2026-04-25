@@ -6,5 +6,33 @@
     "max": 3,
     "step": 0.1,
     "description": "Desklet scale size"
+  },
+  "border-color": {
+    "type": "colorchooser",
+    "default": "#ffffff",
+    "description": "Border color"
+  },
+  "border-size": {
+    "type": "scale",
+    "default": 0.1,
+    "min": 0,
+    "max": 1,
+    "step": 0.05,
+    "units": "em",
+    "description": "Border size"
+  },
+  "border-radius": {
+    "type": "scale",
+    "default": 3,
+    "min": 0,
+    "max": 10,
+    "step": 0.5,
+    "units": "em",
+    "description": "Border radius"
+  },
+  "hide-decorations": {
+    "type": "checkbox",
+    "description": "Hide decorations",
+    "default": true
   }
 }
