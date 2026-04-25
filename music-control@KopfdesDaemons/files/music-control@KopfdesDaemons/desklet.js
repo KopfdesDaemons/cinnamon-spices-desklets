@@ -64,8 +64,9 @@ class MyDesklet extends Desklet.Desklet {
     this.scaleSize = 1;
     this.size = 18;
     this.borderColor = "#ffffff";
-    this.borderSize = 0.1;
-    this.borderRadius = 3;
+    this.borderSize = 0.2;
+    this.borderRadius = 10;
+    this.coverOpacity = 1.0;
     this.hideDecorations = true;
 
     // Bind settings
@@ -74,6 +75,7 @@ class MyDesklet extends Desklet.Desklet {
     this.settings.bindProperty(Settings.BindingDirection.IN, "border-color", "borderColor", this._setupLayout);
     this.settings.bindProperty(Settings.BindingDirection.IN, "border-size", "borderSize", this._setupLayout);
     this.settings.bindProperty(Settings.BindingDirection.IN, "border-radius", "borderRadius", this._setupLayout);
+    this.settings.bindProperty(Settings.BindingDirection.IN, "cover-opacity", "coverOpacity", this._setupLayout);
     this.settings.bindProperty(Settings.BindingDirection.IN, "hide-decorations", "hideDecorations", this._onDecorationsChanged);
 
     this._players = {};
@@ -239,10 +241,13 @@ class MyDesklet extends Desklet.Desklet {
 
   _showCover(coverPath) {
     this._currentCover = coverPath || this._imagePath;
-    if (this._mainWidget) {
-      this._mainWidget.set_style(
-        `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${this.borderSize * this.scaleSize}em solid ${this.borderColor};`,
+    if (this._bgWidget) {
+      let contentSize = this.size * this.scaleSize;
+      let borderSize = this.borderSize * this.scaleSize;
+      this._bgWidget.set_style(
+        `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${contentSize}em; height: ${contentSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${borderSize}em solid transparent;`,
       );
+      this._bgWidget.set_opacity(Math.round(this.coverOpacity * 255));
     }
   }
 
@@ -260,15 +265,30 @@ class MyDesklet extends Desklet.Desklet {
   }
 
   _getContainer() {
-    this._mainWidget = new St.BoxLayout({
-      vertical: true,
+    let contentSize = this.size * this.scaleSize;
+    let borderSize = this.borderSize * this.scaleSize;
+    let totalSize = contentSize + 2 * borderSize;
+
+    this._mainWidget = new St.Widget({
       clip_to_allocation: true,
-      style: `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${this.size * this.scaleSize}em; height: ${this.size * this.scaleSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${this.borderSize * this.scaleSize}em solid ${this.borderColor};`,
+      style: `width: ${totalSize}em; height: ${totalSize}em;`,
     });
+
+    this._bgWidget = new St.Widget({
+      style: `background-image: url("file://${this._currentCover}"); background-size: cover; background-position: center; width: ${contentSize}em; height: ${contentSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${borderSize}em solid transparent;`,
+    });
+    this._bgWidget.set_opacity(Math.round(this.coverOpacity * 255));
+    this._mainWidget.add_child(this._bgWidget);
+
+    this._contentWidget = new St.BoxLayout({
+      vertical: true,
+      style: `width: ${contentSize}em; height: ${contentSize}em; border-radius: ${this.borderRadius * this.scaleSize}em; border: ${borderSize}em solid ${this.borderColor};`,
+    });
+    this._mainWidget.add_child(this._contentWidget);
 
     // Spacer to push content into the lower half
     const spacer = new St.Widget({ style: `height: ${(this.size / 2) * this.scaleSize}em;` });
-    this._mainWidget.add_child(spacer);
+    this._contentWidget.add_child(spacer);
 
     // Title
     const titleRow = new St.Bin({ x_align: St.Align.MIDDLE });
@@ -277,7 +297,7 @@ class MyDesklet extends Desklet.Desklet {
       style: `background-color: rgba(0, 0, 0, 0.7); text-align: center; font-size: ${1.5 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${this.size}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
     });
     titleRow.set_child(this._title);
-    this._mainWidget.add_child(titleRow);
+    this._contentWidget.add_child(titleRow);
 
     // Artist
     const artistRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${this.size * this.scaleSize}em;` });
@@ -286,7 +306,7 @@ class MyDesklet extends Desklet.Desklet {
       style: `background-color: rgba(0, 0, 0, 0.7); text-align: center; font-size: ${1 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em; max-width: ${11 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em ${0.8 * this.scaleSize}em;`,
     });
     artistRow.set_child(this._artist);
-    this._mainWidget.add_child(artistRow);
+    this._contentWidget.add_child(artistRow);
 
     // Controls
     const controlsRow = new St.Bin({ x_align: St.Align.MIDDLE, style: `width: ${this.size * this.scaleSize}em;` });
@@ -324,7 +344,7 @@ class MyDesklet extends Desklet.Desklet {
     controlsRowContent.add_child(nextBtn);
 
     controlsRow.set_child(controlsRowContent);
-    this._mainWidget.add_child(controlsRow);
+    this._contentWidget.add_child(controlsRow);
 
     return this._mainWidget;
   }
