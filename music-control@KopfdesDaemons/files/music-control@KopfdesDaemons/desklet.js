@@ -316,6 +316,7 @@ class MyDesklet extends Desklet.Desklet {
 
     const controlButtonStyle = `height: ${3 * this.scaleSize}em; width: ${3 * this.scaleSize}em; padding: ${0.2 * this.scaleSize}em; border-radius: ${1 * this.scaleSize}em;`;
 
+    // Previous button
     this._prevBtnIcon = new St.Icon({ icon_name: "media-seek-backward", icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle });
     const prevBtn = new St.Button({ child: this._prevBtnIcon, style_class: "music-control-button", style: controlButtonStyle });
     prevBtn.connect("clicked", () => {
@@ -325,6 +326,7 @@ class MyDesklet extends Desklet.Desklet {
     });
     controlsRowContent.add_child(prevBtn);
 
+    // Play/Pause button
     this._playBtnIcon = new St.Icon({ icon_name: "media-playback-start", icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle });
     const playBtn = new St.Button({ child: this._playBtnIcon, style_class: "music-control-button", style: controlButtonStyle });
     playBtn.connect("clicked", () => {
@@ -334,6 +336,7 @@ class MyDesklet extends Desklet.Desklet {
     });
     controlsRowContent.add_child(playBtn);
 
+    // Next button
     this._nextBtnIcon = new St.Icon({ icon_name: "media-seek-forward", icon_type: St.IconType.SYMBOLIC, style: controlButtonStyle });
     const nextBtn = new St.Button({ child: this._nextBtnIcon, style_class: "music-control-button", style: controlButtonStyle });
     nextBtn.connect("clicked", () => {
